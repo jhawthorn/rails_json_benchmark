@@ -1,8 +1,10 @@
 require "rails/all"
 require "rapidjson"
+require "rapidjson/active_support_encoder"
 require "benchmark/ips"
+require "json_escape"
 
-source_twitter_data = ::JSON.parse(File.read("twitter.json"))
+source_data = ::JSON.parse(File.read("twitter.json"))
 
 # We're making a fake twitter reimplementation, based on the popular
 # twitter.json benchmark.
@@ -31,47 +33,32 @@ class Status
   def as_json(*) = @data
 end
 
-data = source_twitter_data.deep_symbolize_keys.deep_dup
+data = source_data.deep_symbolize_keys.deep_dup
 data[:statuses].map! { Status.new(_1) }
-
-TestEncoder = MyEncoder.new do |obj, is_key|
-  if !is_key
-    obj.as_json
-  else
-    obj.to_s
-  end
-end
-
-
-#p data.to_json
-result = TestEncoder.dump(data)
-
-File.write("test.json", result)
-File.write("compare.json", data.to_json)
-
-p result.size
-p data.to_json.size
-p source_twitter_data.to_json.size
 
 Benchmark.ips do |x|
   x.report "data.to_json" do
     data.to_json
   end
 
-  x.report "source_twitter_data.to_json" do
-    source_twitter_data.to_json
+  x.report "source_data.to_json" do
+    source_data.to_json
+  end
+
+  x.report "RapidJSON::ActiveSupportEncoder.encode" do
+    RapidJSON::ActiveSupportEncoder.new.encode(data)
+  end
+
+  x.report "RapidJSON::ActiveSupportEncoder.encode(source_data)" do
+    RapidJSON::ActiveSupportEncoder.new.encode(source_data)
   end
 
   x.report "JSON.generate(source_data)" do
-    JSON.generate(source_twitter_data)
+    JSON.generate(source_data)
   end
 
   x.report "RapidJSON.generate(source_data)" do
-    RapidJSON.encode(source_twitter_data)
-  end
-
-  x.report "TestEncoder" do
-    TestEncoder.dump(data)
+    RapidJSON.encode(source_data)
   end
 end
 
