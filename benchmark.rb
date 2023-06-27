@@ -16,7 +16,6 @@ class User
   def initialize(data)
     @data = data
     @data[:created_at] = Time.parse(@data[:created_at])
-    @data.keys.each { self.class.attr_reader _1 unless respond_to? _1 }
   end
 
   def as_json(*) = @data
@@ -33,12 +32,12 @@ class Status
   def as_json(*) = @data
 end
 
-data = source_data.deep_symbolize_keys.deep_dup
-data[:statuses].map! { Status.new(_1) }
+objects = source_data.deep_symbolize_keys.deep_dup
+objects[:statuses].map! { Status.new(_1) }
 
 Benchmark.ips do |x|
-  x.report "data.to_json" do
-    data.to_json
+  x.report "objects.to_json" do
+    objects.to_json
   end
 
   x.report "source_data.to_json" do
@@ -46,7 +45,7 @@ Benchmark.ips do |x|
   end
 
   x.report "RapidJSON::ActiveSupportEncoder.encode" do
-    RapidJSON::ActiveSupportEncoder.new.encode(data)
+    RapidJSON::ActiveSupportEncoder.new.encode(objects)
   end
 
   x.report "RapidJSON::ActiveSupportEncoder.encode(source_data)" do
